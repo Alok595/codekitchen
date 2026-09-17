@@ -4,19 +4,12 @@ import Credentials from 'next-auth/providers/credentials';
 import { getDatabase } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
-const googleClientId = process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID || '';
-const googleClientSecret = process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET || '';
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    ...(googleClientId && googleClientSecret
-      ? [
-          Google({
-            clientId: googleClientId,
-            clientSecret: googleClientSecret,
-          }),
-        ]
-      : []),
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET || '',
+    }),
     Credentials({
       name: 'Credentials',
       credentials: {
@@ -62,17 +55,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/signin',
   },
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.id = user.id || token.sub;
       }
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string;
+      if (session.user) {
+        session.user.id = (token.id as string) || (token.sub as string);
       }
       return session;
     },
